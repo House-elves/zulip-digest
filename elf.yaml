@@ -1,0 +1,65 @@
+# A House Elves elf: what Elf Desk needs to install, set up and run zulip-digest.
+name: zulip-digest
+title: Zulip
+description: Sums up what was said in your Zulip streams and DMs lately, per topic, with Claude, for its Zulip tab.
+main: ZulipDigest.java
+config: ~/.config/zulip-digest/config
+tools: [claude]
+
+reads:
+  - Your Zulip streams and direct messages of the last day, with your API key.
+writes:
+  - Marks a topic read in Zulip when you click Done.
+
+settings:
+  - key: ZULIP_SERVER_1
+    label: Zulip server
+    help: For example quarkusio.zulipchat.com.
+    kind: host
+  - key: ZULIP_EMAIL_1
+    label: Zulip account
+    help: The email you sign in to Zulip with.
+    kind: email
+  - key: ZULIP_API_KEY_1
+    label: Zulip API key
+    help: From Zulip, Personal settings, Account and privacy, API key.
+    kind: secret
+    goes-with: [ZULIP_SERVER_1, ZULIP_EMAIL_1]
+  - key: HOURS
+    label: Hours to read back
+    help: How far back each digest looks.
+    kind: int
+    min: 1
+    max: 168
+    default: "24"
+
+commands:
+  digest:
+    label: Sum up Zulip
+    args: []
+  dry-run:
+    label: Sum up without saving
+    args: [--dry-run]
+
+dry-run: dry-run
+
+# Its tab (and dashboard card), drawn by ui/zulip.js in the desk's sandboxed frame. It reads only the digests it saved
+# and what you marked done.
+tab:
+  page: ui/zulip.js
+  card: true
+refresh:
+  command: digest
+  schedule: "Mon..Fri *-*-* 07:00"
+data: [runs, done]
+
+actions:
+  done:
+    label: Mark a Zulip topic read
+    args: [--action=done]
+    ask: false
+    params:
+      server: {pattern: "[A-Za-z0-9][A-Za-z0-9.-]{0,252}"}
+      stream: {pattern: "\\P{Cntrl}{1,200}"}
+      topic: {pattern: "\\P{Cntrl}{0,200}"}
+      messages: {kind: ints, max: 500}

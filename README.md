@@ -1,0 +1,28 @@
+<img src="https://raw.githubusercontent.com/House-elves/elf-desk/main/docs/brand/mark.svg" width="72" alt="House Elves logo: a checkmark that ends in an elf's hat">
+
+# zulip-digest
+
+A House Elf that sums up your Zulip with [Claude Code](https://claude.com/claude-code), for its **Zulip** tab on [Elf Desk](https://github.com/House-elves/elf-desk).
+
+Each run reads what was said in your streams and direct messages over the last day (and any older unread mentions), and writes a short digest of each topic. The tab lists the topics that involve you first (mentions, DMs, followed topics), then the ones with unread messages. **Done** on a topic marks it read in Zulip. Nothing else is marked read, and it sends nothing.
+
+## Install
+
+From Elf Desk's **Elves** page: **Install** adds the Zulip tab, which asks for your Zulip server, the email you sign in with and your API key (Zulip, Personal settings, Account and privacy). Once they're saved it reads Zulip for the first time. After that it runs when you click **Refresh** (or the dashboard's **Refresh everything**) and on weekdays at 07:00, which you can change in its settings.
+
+The desk reads [`elf.yaml`](elf.yaml): its settings, commands, tab and the one action its tab may ask for (Done).
+
+## Prerequisites
+
+- Java 21+ and [JBang](https://www.jbang.dev/)
+- The [Claude Code CLI](https://claude.com/claude-code) (`claude`), logged in
+- A Zulip API key
+
+## By hand
+
+```bash
+jbang ZulipDigest.java            # read, sum up and save the digest
+jbang ZulipDigest.java --dry-run  # the same, without saving
+```
+
+Settings are in `~/.config/zulip-digest/config` (only readable by you): `ZULIP_SERVER_1`, `ZULIP_EMAIL_1`, `ZULIP_API_KEY_1` and `HOURS` (24). More servers can be added by hand as `ZULIP_SERVER_2` and so on. Digests are saved in `~/.config/zulip-digest/runs` for 90 days, and what you marked Done in `done/zulip.json` for a month.
