@@ -4,13 +4,17 @@
 
 A House Elf that sums up your Zulip with [Claude Code](https://claude.com/claude-code), for its **Zulip** tab on [Elf Desk](https://github.com/House-elves/elf-desk).
 
-Each run reads what was said in your streams and direct messages over the last day (and any older unread mentions), and writes a short digest of each topic. The tab lists the topics that involve you first (mentions, DMs, followed topics), then the ones with unread messages. **Done** on a topic marks it read in Zulip. Nothing else is marked read, and it sends nothing.
+Each run reads what was said in your streams and direct messages over the last day (and any older unread mentions), and writes a short digest of each topic. The tab lists the topics that involve you first (mentions, DMs, followed topics), then the ones with unread messages. **Done** on a topic marks it read in Zulip. Nothing else is marked read.
+
+**Reply** on a topic (or on your direct messages: the latest conversation) asks Claude for a suggested reply from its latest messages. You edit it, and **Send** posts it there as you, once you confirm it in the desk's bar. Where it goes always comes from Zulip itself. Nothing else is ever sent.
+
+Claude reads other people's words here, so every Claude call (digests and replies) runs with no tools (built in or MCP), none of your Claude settings, and in an empty folder.
 
 ## Install
 
 In Elf Desk, the **+** after the last tab: **Add** it, which adds the Zulip tab, which asks for your Zulip server, the email you sign in with and your API key (Zulip, Personal settings, Account and privacy). Once they're saved it reads Zulip for the first time. After that it runs when you click **Refresh** (or the dashboard's **Refresh everything**) and on weekdays at 07:00, which you can change in its settings.
 
-The desk reads [`elf.yaml`](elf.yaml): its settings, commands, tab and the one action its tab may ask for (Done).
+The desk reads [`elf.yaml`](elf.yaml): its settings, commands, tab and the actions its tab may ask for (Done, a suggested reply, and Send, which asks you first).
 
 ## Prerequisites
 

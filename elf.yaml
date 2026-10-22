@@ -1,7 +1,7 @@
 # A House Elves elf: what Elf Desk needs to install, set up and run zulip-digest.
 name: zulip-digest
 title: Zulip
-version: 1.1.0
+version: 1.2.0
 author: "@phillip-kruger"
 description: Sums up what was said in your Zulip streams and DMs lately, per topic, with Claude, for its Zulip tab.
 main: ZulipDigest.java
@@ -10,8 +10,10 @@ tools: [claude]
 
 reads:
   - Your Zulip streams and direct messages of the last day, with your API key.
+  - A conversation's latest messages when you ask it to suggest a reply (Claude reads them, with no tools).
 writes:
   - Marks a topic read in Zulip when you click Done.
+  - Sends your reply to a topic or a direct message, as you, only when you click and confirm it in the desk's bar.
 
 settings:
   - key: ZULIP_SERVER_1
@@ -65,3 +67,25 @@ actions:
       stream: {pattern: "\\P{Cntrl}{1,200}"}
       topic: {pattern: "\\P{Cntrl}{0,200}"}
       messages: {kind: ints, max: 500}
+  draft-reply:
+    label: Suggest a reply to a Zulip conversation
+    args: [--action=draft-reply]
+    ask: false
+    params:
+      server: {pattern: "[A-Za-z0-9][A-Za-z0-9.-]{0,252}"}
+      stream: {pattern: "\\P{Cntrl}{1,200}"}
+      topic: {pattern: "\\P{Cntrl}{0,200}"}
+      # A direct message is answered by one of its messages: whoever it's with, as Zulip says.
+      message: {kind: int, optional: true}
+  send-reply:
+    label: Send a reply on Zulip
+    args: [--action=send-reply]
+    confirm: "Send your reply to {where} on Zulip, as you?"
+    params:
+      server: {pattern: "[A-Za-z0-9][A-Za-z0-9.-]{0,252}"}
+      stream: {pattern: "\\P{Cntrl}{1,200}"}
+      topic: {pattern: "\\P{Cntrl}{0,200}"}
+      message: {kind: int, optional: true}
+      # For the confirm bar's words; the elf sends where Zulip says the conversation is.
+      where: {pattern: "\\P{Cntrl}{1,300}"}
+      content: {pattern: "[\\s\\S]{1,10000}", max: 10000}

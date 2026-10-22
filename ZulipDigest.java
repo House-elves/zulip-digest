@@ -1,9 +1,11 @@
 ///usr/bin/env jbang "$0" "$@" ; exit $?
+//JAVA 21+
 //DEPS info.picocli:picocli:4.7.6
 //DEPS com.fasterxml.jackson.core:jackson-databind:2.17.2
 //SOURCES Config.java
 //SOURCES ZulipChat.java
 //SOURCES TopicDigest.java
+//SOURCES Reply.java
 
 import picocli.CommandLine;
 import picocli.CommandLine.Command;
@@ -42,7 +44,9 @@ public class ZulipDigest implements Callable<Integer> {
     boolean dryRun;
 
     @Option(names = "--action", paramLabel = "NAME", description = "For the Zulip tab: done (stdin: {server, stream, "
-            + "topic, messages}) marks the topic read and records it in ~/.config/zulip-digest/done. Prints one JSON line.")
+            + "topic, messages}) marks the topic read and records it in ~/.config/zulip-digest/done; draft-reply "
+            + "({server, stream, topic, message}) suggests a reply; send-reply (the same, and content) sends it. "
+            + "Prints one JSON line.")
     String action;
 
     static final Path RUNS = Config.CONFIG_DIR.resolve("runs");
@@ -93,7 +97,7 @@ public class ZulipDigest implements Callable<Integer> {
 
     /** --action done: Done on a topic in the Zulip tab, its values on stdin (the runner checked them against elf.yaml). */
     private int action(Config config) {
-        if (!action.equals("done")) {
+        if (!List.of("done", "draft-reply", "send-reply").contains(action)) {
             System.err.println("Not an action: " + action);
             return 2;
         }
@@ -111,6 +115,7 @@ public class ZulipDigest implements Callable<Integer> {
             System.err.println("Not a configured Zulip server: " + serverName);
             return 2;
         }
+        if (!action.equals("done")) return reply(server, in);
         String stream = in.path("stream").asText(""), topic = in.path("topic").asText("");
         List<Long> ids = new ArrayList<>();
         in.path("messages").forEach(m -> ids.add(m.asLong()));
@@ -130,6 +135,28 @@ public class ZulipDigest implements Callable<Integer> {
         if (recordDone(serverName, stream + " > " + topic) != 0) return 1;
         System.out.println("{\"marked\": " + marked + "}");
         return 0;
+    }
+
+    /** draft-reply and send-reply: the conversation is read from Zulip each time, so it goes where Zulip says. */
+    private int reply(Config.ZulipServer server, JsonNode in) {
+        try {
+            Reply.Conversation c = Reply.conversation(server, in.path("stream").asText(""), in.path("topic").asText(""),
+                    in.path("message").asLong(0));
+            // The confirm bar named where it goes: it must be where Zulip says the conversation is.
+            if (action.equals("send-reply") && !c.where().equals(in.path("where").asText(""))) {
+                throw new IllegalArgumentException("That conversation is " + c.where() + " now, not " + in.path("where").asText("")
+                        + ". Suggest the reply again.");
+            }
+            ObjectNode out = action.equals("draft-reply") ? Reply.draft(c) : Reply.send(c, in.path("content").asText(""));
+            System.out.println(JSON.writeValueAsString(out));
+            return 0;
+        } catch (IllegalArgumentException e) {
+            System.err.println(e.getMessage());
+            return 2;
+        } catch (Exception e) {
+            System.err.println((action.equals("draft-reply") ? "Couldn't suggest a reply: " : "Couldn't send it: ") + e.getMessage());
+            return 1;
+        }
     }
 
     static String host(String url) {

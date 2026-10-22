@@ -6,6 +6,7 @@ import {
     isToday, settingsButton, Ticking, elf,
 } from '/elf-kit/1/kit.js';
 import { runs, run, done, aiThisMonth, usd } from './runs.js';
+import './reply.js';
 
 
 /** The id at the end of a message's link (…/near/631450774), or null. */
@@ -44,12 +45,22 @@ function doneValues(t) {
         messages: t.stream === 'DM' ? t.messages.map(m => messageId(m.url)).filter(Boolean) : [] };
 }
 
+/**
+ * Which conversation a reply goes to: the topic, or for direct messages (one "topic" here) the conversation of the
+ * latest one. The elf asks Zulip who that is.
+ */
+function replyValues(t) {
+    const id = messageId(t.last.url);
+    return { server: t.last.server, stream: t.stream, topic: t.topic, ...(t.stream === 'DM' && id ? { message: id } : {}) };
+}
+
 class ZulipTab extends LitElement {
 
     static properties = {
         _runs: { state: true },
         _run: { state: true },
         _aiMonth: { state: true },   // what Claude cost over this month's runs, or null
+        _replying: { state: true },  // the topic key whose reply is open
         _marks: { state: true },
         _picked: { state: true },
         _doing: { state: true },
@@ -190,6 +201,9 @@ class ZulipTab extends LitElement {
                 <div class="where">
                     <span class="stream">${t.stream === 'DM' ? 'Direct message' : `#${t.stream}`}</span>
                     <a class="topic" href=${t.last.url} target="_blank" rel="noopener">${t.topic || '(no topic)'}</a>
+                    <button class="sm" aria-expanded=${this._replying === t.key ? 'true' : 'false'}
+                        title="Claude suggests a reply for you to edit; nothing is sent until you click Send and confirm it"
+                        @click=${() => { this._replying = this._replying === t.key ? null : t.key; }}>Reply</button>
                     ${t.done ? '' : html`<button class="sm" ?disabled=${this._all?.of}
                         title=${t.stream === 'DM' ? 'Marks these direct messages read in Zulip' : 'Marks the topic read in Zulip'}
                         @click=${() => this._done(t)}>${this._doing === t.key ? spinner : ''}Done</button>`}
@@ -202,6 +216,9 @@ class ZulipTab extends LitElement {
                     <span class="chip">Last at ${this._time(t.last.time)} by ${t.last.sender}</span>
                 </div>
                 ${t.digest ? html`<p class="digest">${t.digest}</p>` : ''}
+                ${this._replying === t.key ? html`<elf-reply .suggest=${() => elf.act('draft-reply', replyValues(t))}
+                    .send=${(d, text) => elf.act('send-reply', { ...replyValues(t), where: d.where, content: text })}
+                    @reply-closed=${() => { this._replying = null; }}></elf-reply>` : ''}
                 <details>
                     <summary>${t.digest ? 'Read the messages' : 'Messages'}</summary>
                     <ol class="msgs">

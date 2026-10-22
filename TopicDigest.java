@@ -41,8 +41,8 @@ public class TopicDigest {
                 + "Output ONLY a JSON object mapping each topic's id (T1, T2, ...) to its digest, "
                 + "with no preamble and no code fence.\n\n" + data;
         try {
-            // JSON: the answer in "result", and what it cost.
-            Process process = new ProcessBuilder("claude", "-p", "--model", "sonnet", "--output-format", "json").start();
+            // Locked down (the messages are other people's words), JSON: the answer in "result", and what it cost.
+            Process process = Reply.Claude.start();
             try (var os = process.getOutputStream()) {
                 os.write(prompt.getBytes(StandardCharsets.UTF_8));
             }

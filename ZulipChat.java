@@ -95,6 +95,51 @@ public class ZulipChat {
         return ids.size();
     }
 
+    /** The newest {@code max} messages of a narrow (JSON), oldest first; empty when Zulip doesn't answer. */
+    static List<ZulipMessage> messages(Config.ZulipServer server, String narrow, int max) {
+        List<ZulipMessage> out = new ArrayList<>(fetchMessages(server, narrow, max));
+        out.sort(Comparator.comparingLong(ZulipMessage::time));
+        return out;
+    }
+
+    static String baseUrl(Config.ZulipServer server) {
+        return (server.url().startsWith("https://") ? server.url() : "https://" + server.url()).replaceAll("/+$", "");
+    }
+
+    private static String auth(Config.ZulipServer server) {
+        return "Basic " + Base64.getEncoder().encodeToString((server.email() + ":" + server.apiKey()).getBytes(StandardCharsets.UTF_8));
+    }
+
+    /** A GET of Zulip's API ({@code path} from /api/v1), as you: its JSON, or an exception saying why not. */
+    static JsonNode get(Config.ZulipServer server, String path) throws IOException {
+        return call(server, HttpRequest.newBuilder().uri(URI.create(baseUrl(server) + path)).GET());
+    }
+
+    /** A POST of a form to Zulip's API, as you. */
+    static JsonNode post(Config.ZulipServer server, String path, Map<String, String> form) throws IOException {
+        StringBuilder body = new StringBuilder();
+        form.forEach((k, v) -> body.append(body.isEmpty() ? "" : "&").append(k).append('=')
+                .append(URLEncoder.encode(v, StandardCharsets.UTF_8)));
+        return call(server, HttpRequest.newBuilder().uri(URI.create(baseUrl(server) + path))
+                .header("Content-Type", "application/x-www-form-urlencoded")
+                .POST(HttpRequest.BodyPublishers.ofString(body.toString())));
+    }
+
+    private static JsonNode call(Config.ZulipServer server, HttpRequest.Builder request) throws IOException {
+        try (HttpClient client = HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(10)).build()) {
+            HttpResponse<String> r = client.send(request.header("Authorization", auth(server)).timeout(Duration.ofSeconds(30)).build(),
+                    HttpResponse.BodyHandlers.ofString());
+            JsonNode json = r.body().isBlank() ? MAPPER.createObjectNode() : MAPPER.readTree(r.body());
+            if (r.statusCode() != 200 || !"success".equals(json.path("result").asText())) {
+                throw new IOException("Zulip said: " + json.path("msg").asText("HTTP " + r.statusCode()));
+            }
+            return json;
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            throw new IOException("Interrupted");
+        }
+    }
+
     private static List<ZulipMessage> fetchMessages(Config.ZulipServer server, String narrow) {
         return fetchMessages(server, narrow, MAX_MESSAGES);
     }
