@@ -78,7 +78,7 @@ class ZulipTab extends LitElement {
         article { padding: 16px 18px; display: grid; gap: 8px; min-width: 0; }
         article.you { box-shadow: inset 3px 0 0 var(--accent); }
         .where { display: flex; flex-wrap: wrap; gap: 6px 10px; align-items: baseline; }
-        .where .sm { margin-left: auto; align-self: center; }
+        .where .acts { margin-left: auto; align-self: center; display: flex; gap: 8px; }
         details.done > summary { padding: 4px 0; }
         details.done[open] > .topics { margin-top: 12px; }
         .stream { font-size: 13px; color: var(--muted); }
@@ -201,12 +201,14 @@ class ZulipTab extends LitElement {
                 <div class="where">
                     <span class="stream">${t.stream === 'DM' ? 'Direct message' : `#${t.stream}`}</span>
                     <a class="topic" href=${t.last.url} target="_blank" rel="noopener">${t.topic || '(no topic)'}</a>
-                    <button class="sm" aria-expanded=${this._replying === t.key ? 'true' : 'false'}
-                        title="Claude suggests a reply for you to edit; nothing is sent until you click Send and confirm it"
-                        @click=${() => { this._replying = this._replying === t.key ? null : t.key; }}>Reply</button>
-                    ${t.done ? '' : html`<button class="sm" ?disabled=${this._all?.of}
-                        title=${t.stream === 'DM' ? 'Marks these direct messages read in Zulip' : 'Marks the topic read in Zulip'}
-                        @click=${() => this._done(t)}>${this._doing === t.key ? spinner : ''}Done</button>`}
+                    <span class="acts">
+                        <button class="sm" aria-expanded=${this._replying === t.key ? 'true' : 'false'}
+                            title="Claude suggests a reply for you to edit; nothing is sent until you click Send and confirm it"
+                            @click=${() => { this._replying = this._replying === t.key ? null : t.key; }}>Reply</button>
+                        ${t.done ? '' : html`<button class="sm" ?disabled=${this._all?.of}
+                            title=${t.stream === 'DM' ? 'Marks these direct messages read in Zulip' : 'Marks the topic read in Zulip'}
+                            @click=${() => this._done(t)}>${this._doing === t.key ? spinner : ''}Done</button>`}
+                    </span>
                 </div>
                 <div class="chips">
                     ${t.mention ? html`<span class="chip run">Mentions you</span>`
