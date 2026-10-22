@@ -5,7 +5,7 @@ import {
     LitElement, html, css, shared, cardStyles, markdown, markdownStyles, spinner, ago, runTime, took, count, joinParts,
     isToday, settingsButton, Ticking, elf,
 } from '/elf-kit/1/kit.js';
-import { runs, run, done } from './runs.js';
+import { runs, run, done, aiThisMonth, usd } from './runs.js';
 
 
 /** The id at the end of a message's link (…/near/631450774), or null. */
@@ -49,6 +49,7 @@ class ZulipTab extends LitElement {
     static properties = {
         _runs: { state: true },
         _run: { state: true },
+        _aiMonth: { state: true },   // what Claude cost over this month's runs, or null
         _marks: { state: true },
         _picked: { state: true },
         _doing: { state: true },
@@ -108,11 +109,21 @@ class ZulipTab extends LitElement {
             this._runs = await runs();
             this._run = await run(this._runs, this._picked);
             this._marks = await done();
+            this._aiMonth = await aiThisMonth().catch(() => null);
         } catch (e) {
             this._error = e.message;
         } finally {
             this._loading = false;
         }
+    }
+
+    /**
+     * ", AI $0.03 (this month $1.20)": what Claude cost for this run and this month. Claude Code's figure at API
+     * prices: on a subscription, what it would have cost.
+     */
+    _aiCost(r) {
+        if (typeof r.data?.aiCost !== 'number') return '';
+        return html`, <span title="What Claude cost: Claude Code's figure at API prices (on a subscription, not what you're billed)">AI ${usd(r.data.aiCost)}${this._aiMonth != null ? ` (this month ${usd(this._aiMonth)})` : ''}</span>`;
     }
 
     /**
@@ -215,7 +226,7 @@ class ZulipTab extends LitElement {
                     <h1>Zulip</h1>
                     <p class="sub">
                         ${r ? html`The ${r.data?.hours ?? r.data?.zulipHours ?? 24} hours up to ${runTime(r.at)}: ${all.length}
-                                ${all.length === 1 ? 'topic' : 'topics'}, ${r.data?.zulip?.messages?.length ?? 0} messages${r.data?.durationMs ? `, took ${took(r.data.durationMs)}` : ''}`
+                                ${all.length === 1 ? 'topic' : 'topics'}, ${r.data?.zulip?.messages?.length ?? 0} messages${r.data?.durationMs ? `, took ${took(r.data.durationMs)}` : ''}${this._aiCost(r)}`
                             : this._loading ? '' : 'Not checked yet.'}
                     </p>
                 </div>${settingsButton(null, 'Zulip settings')}</div>

@@ -21,6 +21,24 @@ export async function runs() {
     });
 }
 
+/**
+ * What Claude cost this calendar month, over every run saved this month (each says its aiCost), or null when none
+ * said. Claude Code's figure, at API prices: on a subscription it's what it would have cost.
+ */
+export async function aiThisMonth() {
+    const now = new Date();
+    const prefix = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-`;
+    const files = (await elf.list('runs')).map(f => f.name).filter(n => ID.test(n) && n.startsWith(prefix)).slice(0, 500);
+    if (!files.length) return null;
+    const costs = Object.values(await elf.read('runs', files, ['aiCost'])).map(d => d?.aiCost).filter(c => typeof c === 'number');
+    return costs.length ? costs.reduce((x, y) => x + y, 0) : null;
+}
+
+/** "$0.42" ("<$0.01" for less). */
+export function usd(n) {
+    return n > 0 && n < 0.01 ? '<$0.01' : `$${Number(n).toFixed(2)}`;
+}
+
 /** A run by id (null: the newest), with its file's contents, or null. */
 export async function run(list, id) {
     const r = (id && list.find(x => x.id === id)) || list[0];

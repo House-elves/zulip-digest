@@ -8,6 +8,9 @@ import java.util.concurrent.TimeUnit;
 /** A one or two sentence digest per Zulip topic, with Claude, for the Zulip tab. */
 public class TopicDigest {
 
+    /** What Claude cost during this run, in US dollars (Claude Code's total_cost_usd, at API prices). */
+    static final java.util.concurrent.atomic.DoubleAdder AI_COST = new java.util.concurrent.atomic.DoubleAdder();
+
     private static final ObjectMapper MAPPER = new ObjectMapper();
 
     /** The key a topic's digest is stored under: "stream > topic". */
@@ -38,7 +41,8 @@ public class TopicDigest {
                 + "Output ONLY a JSON object mapping each topic's id (T1, T2, ...) to its digest, "
                 + "with no preamble and no code fence.\n\n" + data;
         try {
-            Process process = new ProcessBuilder("claude", "-p", "--model", "sonnet").start();
+            // JSON: the answer in "result", and what it cost.
+            Process process = new ProcessBuilder("claude", "-p", "--model", "sonnet", "--output-format", "json").start();
             try (var os = process.getOutputStream()) {
                 os.write(prompt.getBytes(StandardCharsets.UTF_8));
             }
@@ -52,6 +56,9 @@ public class TopicDigest {
                 System.err.println("  Zulip digest failed: " + out.substring(0, Math.min(300, out.length())));
                 return Map.of();
             }
+            JsonNode answer = MAPPER.readTree(out);
+            if (answer.path("total_cost_usd").isNumber()) AI_COST.add(answer.path("total_cost_usd").asDouble());
+            out = answer.path("result").asText("");
             int start = out.indexOf('{'), end = out.lastIndexOf('}');
             if (start < 0 || end < start) {
                 System.err.println("  Zulip digest returned no JSON: " + out.substring(0, Math.min(300, out.length())));

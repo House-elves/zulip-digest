@@ -83,6 +83,7 @@ public class ZulipDigest implements Callable<Integer> {
         runData.put("hours", config.hours);
         runData.put("zulip", Map.of("messages", list, "digests", digests));
         runData.put("durationMs", System.currentTimeMillis() - startTime);
+        runData.put("aiCost", TopicDigest.AI_COST.sum());
         runData.put("status", "success");
         if (dryRun) System.out.println("Dry run: the digest isn't saved.");
         else save(runData);
