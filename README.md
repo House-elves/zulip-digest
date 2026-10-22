@@ -8,7 +8,7 @@ Each run reads what was said in your streams and direct messages over the last d
 
 ## Install
 
-From Elf Desk's **Elves** page: **Install** adds the Zulip tab, which asks for your Zulip server, the email you sign in with and your API key (Zulip, Personal settings, Account and privacy). Once they're saved it reads Zulip for the first time. After that it runs when you click **Refresh** (or the dashboard's **Refresh everything**) and on weekdays at 07:00, which you can change in its settings.
+In Elf Desk, the **+** after the last tab: **Add** it, which adds the Zulip tab, which asks for your Zulip server, the email you sign in with and your API key (Zulip, Personal settings, Account and privacy). Once they're saved it reads Zulip for the first time. After that it runs when you click **Refresh** (or the dashboard's **Refresh everything**) and on weekdays at 07:00, which you can change in its settings.
 
 The desk reads [`elf.yaml`](elf.yaml): its settings, commands, tab and the one action its tab may ask for (Done).
 
