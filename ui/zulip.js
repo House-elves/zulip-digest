@@ -331,4 +331,12 @@ class ZulipCard extends LitElement {
 
 customElements.define('zulip-tab', ZulipTab);
 customElements.define('zulip-card', ZulipCard);
-document.body.append(document.createElement(elf.view === 'card' ? 'zulip-card' : 'zulip-tab'));
+if (elf.view === 'settings') {
+    // How you write, at the top of the desk's Settings pop-up for Zulip.
+    await import('./style.js');
+    const style = document.createElement('elf-style');
+    style.what = 'Zulip messages';
+    document.body.append(style);
+} else {
+    document.body.append(document.createElement(elf.view === 'card' ? 'zulip-card' : 'zulip-tab'));
+}

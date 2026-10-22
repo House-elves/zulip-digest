@@ -6,6 +6,7 @@
 //SOURCES ZulipChat.java
 //SOURCES TopicDigest.java
 //SOURCES Reply.java
+//SOURCES Style.java
 
 import picocli.CommandLine;
 import picocli.CommandLine.Command;
@@ -97,6 +98,7 @@ public class ZulipDigest implements Callable<Integer> {
 
     /** --action done: Done on a topic in the Zulip tab, its values on stdin (the runner checked them against elf.yaml). */
     private int action(Config config) {
+        if (action.equals("learn-style") || action.equals("save-style")) return style(config);
         if (!List.of("done", "draft-reply", "send-reply").contains(action)) {
             System.err.println("Not an action: " + action);
             return 2;
@@ -135,6 +137,23 @@ public class ZulipDigest implements Callable<Integer> {
         if (recordDone(serverName, stream + " > " + topic) != 0) return 1;
         System.out.println("{\"marked\": " + marked + "}");
         return 0;
+    }
+
+    /** learn-style (from your own recent messages) and save-style ({text}): how you write, for suggested replies. */
+    private int style(Config config) {
+        try {
+            ObjectNode out = action.equals("learn-style")
+                    ? Style.learn(Reply.yourMessages(config.getZulipServers()), "Zulip messages")
+                    : Style.save(JSON.readTree(System.in).path("text").asText(""), "you");
+            System.out.println(JSON.writeValueAsString(out));
+            return 0;
+        } catch (IllegalArgumentException e) {
+            System.err.println(e.getMessage());
+            return 2;
+        } catch (Exception e) {
+            System.err.println((action.equals("learn-style") ? "Couldn't learn how you write: " : "Couldn't save it: ") + e.getMessage());
+            return 1;
+        }
     }
 
     /** draft-reply and send-reply: the conversation is read from Zulip each time, so it goes where Zulip says. */

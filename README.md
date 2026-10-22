@@ -8,6 +8,8 @@ Each run reads what was said in your streams and direct messages over the last d
 
 **Reply** on a topic (or on your direct messages: the latest conversation) asks Claude for a suggested reply from its latest messages. You edit it, and **Send** posts it there as you, once you confirm it in the desk's bar. Where it goes always comes from Zulip itself. Nothing else is ever sent.
 
+Suggestions follow **How you write**, a short note at the top of Zulip's Settings: write it yourself, or **Learn from my Zulip messages** has Claude write it from your recent messages (your own words only, without what they quote). Your own messages in the conversation also show it how you write. It's kept in `~/.config/zulip-digest/style/`.
+
 Claude reads other people's words here, so every Claude call (digests and replies) runs with no tools (built in or MCP), none of your Claude settings, and in an empty folder.
 
 ## Install
