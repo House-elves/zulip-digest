@@ -1,6 +1,8 @@
 # A House Elves elf: what Elf Desk needs to install, set up and run zulip-digest.
 name: zulip-digest
 title: Zulip
+version: 1.0.0
+author: "@phillip-kruger"
 description: Sums up what was said in your Zulip streams and DMs lately, per topic, with Claude, for its Zulip tab.
 main: ZulipDigest.java
 config: ~/.config/zulip-digest/config
