@@ -19,10 +19,11 @@ public class ZulipChat {
     /**
      * @param time   when it was sent, in epoch seconds
      * @param unread whether it is unread for you
+     * @param senderEmail the sender's account: who sent it, as Zulip knows (a display name anyone can copy)
      */
     record ZulipMessage(String server, String stream, String topic, String sender,
                         String content, String url, boolean isMention,
-                        boolean involvesMe, String fullText, long time, boolean unread) {
+                        boolean involvesMe, String fullText, long time, boolean unread, String senderEmail) {
         long id() {
             return extractMessageId(url);
         }
@@ -53,7 +54,7 @@ public class ZulipChat {
 
     private static ZulipMessage asMention(ZulipMessage m) {
         return new ZulipMessage(m.server(), m.stream(), m.topic(), m.sender(), m.content(), m.url(), true, true,
-                m.fullText(), m.time(), m.unread());
+                m.fullText(), m.time(), m.unread(), m.senderEmail());
     }
 
     /**
@@ -204,7 +205,8 @@ public class ZulipChat {
                 String messageUrl = buildMessageUrl(baseUrl, stream, topic, messageId);
 
                 result.add(new ZulipMessage(server.url(), stream, topic, sender, content, messageUrl, false,
-                        personal, fullText, msg.path("timestamp").asLong(), !flags.contains("read")));
+                        personal, fullText, msg.path("timestamp").asLong(), !flags.contains("read"),
+                        msg.path("sender_email").asText("")));
             }
             return result;
         } catch (Exception e) {
