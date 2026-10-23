@@ -7,6 +7,7 @@
 //SOURCES TopicDigest.java
 //SOURCES Reply.java
 //SOURCES Style.java
+//SOURCES Research.java
 
 import picocli.CommandLine;
 import picocli.CommandLine.Command;
@@ -46,7 +47,8 @@ public class ZulipDigest implements Callable<Integer> {
 
     @Option(names = "--action", paramLabel = "NAME", description = "For the Zulip tab: done (stdin: {server, stream, "
             + "topic, messages}) marks the topic read and records it in ~/.config/zulip-digest/done; draft-reply "
-            + "({server, stream, topic, message}) suggests a reply; send-reply (the same, and content) sends it. "
+            + "({server, stream, topic, message}) suggests a reply; send-reply (the same, and content) sends it; find-out (the same, "
+            + "content and repo) has an agent look up what the reply leaves open. "
             + "Prints one JSON line.")
     String action;
 
@@ -99,7 +101,7 @@ public class ZulipDigest implements Callable<Integer> {
     /** --action done: Done on a topic in the Zulip tab, its values on stdin (the runner checked them against elf.yaml). */
     private int action(Config config) {
         if (action.equals("learn-style") || action.equals("save-style")) return style(config);
-        if (!List.of("done", "draft-reply", "send-reply").contains(action)) {
+        if (!List.of("done", "draft-reply", "send-reply", "find-out").contains(action)) {
             System.err.println("Not an action: " + action);
             return 2;
         }
@@ -166,14 +168,21 @@ public class ZulipDigest implements Callable<Integer> {
                 throw new IllegalArgumentException("That conversation is " + c.where() + " now, not " + in.path("where").asText("")
                         + ". Suggest the reply again.");
             }
-            ObjectNode out = action.equals("draft-reply") ? Reply.draft(c) : Reply.send(c, in.path("content").asText(""));
+            ObjectNode out = switch (action) {
+                case "draft-reply" -> Reply.draft(c);
+                // An agent, which the runner starts: it looks up what the reply leaves open, in the repo you name.
+                case "find-out" -> Research.request(server.email(), "a Zulip conversation", Reply.json(c),
+                        in.path("content").asText(""), in.path("repo").asText(""));
+                default -> Reply.send(c, in.path("content").asText(""));
+            };
             System.out.println(JSON.writeValueAsString(out));
             return 0;
         } catch (IllegalArgumentException e) {
             System.err.println(e.getMessage());
             return 2;
         } catch (Exception e) {
-            System.err.println((action.equals("draft-reply") ? "Couldn't suggest a reply: " : "Couldn't send it: ") + e.getMessage());
+            System.err.println((action.equals("draft-reply") ? "Couldn't suggest a reply: " : action.equals("find-out")
+                    ? "Couldn't start the agent: " : "Couldn't send it: ") + e.getMessage());
             return 1;
         }
     }

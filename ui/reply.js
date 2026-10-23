@@ -7,11 +7,18 @@ function usd(n) {
     return n > 0 && n < 0.01 ? '<$0.01' : `$${Number(n).toFixed(2)}`;
 }
 
+/** A [placeholder] the suggestion left for something to look up. */
+const PLACEHOLDER = /\[[^\]\n]{3,}\]/;
+const REPO = /^[A-Za-z0-9][A-Za-z0-9-]{0,38}\/[A-Za-z0-9._-]{1,100}$/;
+
 /**
- * <elf-reply .suggest=${() => elf.act('draft-reply', …)} .send=${(draft, text, options) => elf.act('send-reply', …)}>
+ * <elf-reply .suggest=${() => elf.act('draft-reply', …)} .send=${(draft, text, options) => elf.act('send-reply', …)}
+ *     .findOut=${(text, repo) => elf.act('find-out', …)}>
  *
- * suggest() answers {reply, where, cc, cost}; send() sends the text you wrote (cc shows when the "all" option is ticked). {@code options}: checkboxes for the
- * send ([{key, label, checked, hint}]), as Mail's Reply all; their values reach send().
+ * suggest() answers {reply, where, cc, repo, repoMentioned, cost}; send() sends the text you wrote (cc shows when the "all" option is ticked). {@code options}: checkboxes for the
+ * send ([{key, label, checked, hint}]), as Mail's Reply all; their values reach send(). findOut() starts an agent
+ * that looks up the reply's [placeholders] in a repo, answering {agent: {id}}; its report (agents/<id>.json) has the
+ * reply filled in, and what it found.
  */
 class ElfReply extends LitElement {
 
@@ -19,6 +26,11 @@ class ElfReply extends LitElement {
         suggest: { attribute: false },
         send: { attribute: false },
         options: { attribute: false },
+        findOut: { attribute: false },
+        _repo: { state: true },      // where Find out looks
+        _agent: { state: true },     // its report: {id, status, lines, output, error, cost}
+        _before: { state: true },    // the text before Find out filled it in, for Undo
+        _askRepo: { state: true },   // Find out opened without a repo the suggestion named
         _draft: { state: true },     // what suggest() answered
         _text: { state: true },
         _picked: { state: true },    // option key -> checked
@@ -40,12 +52,50 @@ class ElfReply extends LitElement {
         label.opt { display: inline-flex; gap: 8px; align-items: center; font-size: 14px; cursor: pointer; }
         .note { font-size: 13px; color: var(--muted); margin: 0; }
         .error { margin: 0; }
+        .find { display: grid; gap: 8px; padding: 10px 12px; border-radius: var(--r-control); background: var(--bg); }
+        .find .acts input { font: 14px var(--font); padding: 5px 9px; border: 1px solid var(--line);
+            border-radius: var(--r-control); background: var(--surface); color: var(--ink); width: 18rem; max-width: 100%; }
+        .line { font-size: 13px; color: var(--muted); margin: 0; overflow-wrap: anywhere; }
+        ul.found { margin: 0; padding-left: 18px; display: grid; gap: 6px; font-size: 13.5px; }
+        ul.found .src { color: var(--muted); overflow-wrap: anywhere; }
     `];
 
     connectedCallback() {
         super.connectedCallback();
         this._picked = Object.fromEntries((this.options ?? []).map(o => [o.key, !!o.checked]));
         if (!this._draft) this._suggest();
+        this._unwatch = elf.onChange(what => { if (what === 'agents' && this._agent) this._readAgent(); });
+    }
+
+    disconnectedCallback() {
+        super.disconnectedCallback();
+        this._unwatch?.();
+    }
+
+    async _findOut() {
+        this._error = null;
+        this._agent = { status: 'queued', lines: [] };
+        try {
+            const r = await this.findOut(this._text, this._repo.trim());
+            this._agent = { id: r.agent.id, status: r.agent.status, lines: [] };
+            this._readAgent();
+        } catch (e) {
+            this._agent = null;
+            this._error = `Couldn't start the agent: ${e.message}`;
+        }
+    }
+
+    async _readAgent() {
+        const id = this._agent?.id;
+        if (!id) return;
+        const a = await elf.agent(id).catch(() => null);
+        if (!a || this._agent?.id !== id) return;
+        const was = this._agent.status;
+        this._agent = a;
+        if (a.status === 'done' && was !== 'done' && a.output?.reply) {
+            this._before = this._text;
+            this._text = a.output.reply;
+        }
     }
 
     async _suggest() {
@@ -54,6 +104,9 @@ class ElfReply extends LitElement {
         try {
             this._draft = await this.suggest();
             this._text = this._draft.reply ?? '';
+            this._repo = this._draft.repo ?? this._repo ?? '';
+            this._agent = null;
+            this._before = null;
         } catch (e) {
             this._error = `Couldn't suggest a reply: ${e.message}`;
             if (this._text == null) this._text = '';
@@ -76,6 +129,50 @@ class ElfReply extends LitElement {
         }
     }
 
+    /**
+     * Find out: while the reply has [placeholders], where to look and the button; then the agent's progress, and
+     * what it found once it filled them in.
+     */
+    _findPart(busy) {
+        if (!this.findOut || this._sent) return '';
+        const a = this._agent;
+        if (a && ['queued', 'running'].includes(a.status)) {
+            const line = a.lines?.length ? a.lines[a.lines.length - 1] : 'Starting…';
+            return html`<div class="find" role="status">
+                <p class="note">${spinner} Finding out in <b>${this._repo}</b>. This takes a few minutes.</p>
+                <p class="line">${line}</p>
+                <div class="acts"><button class="sm quiet" @click=${() => elf.cancelAgent(a.id).catch(() => {})}>Stop</button></div>
+            </div>`;
+        }
+        const found = a?.status === 'done' ? a.output?.findings ?? [] : [];
+        const open = PLACEHOLDER.test(this._text ?? '');
+        return html`
+            ${a?.status === 'done' ? html`<div class="find">
+                <p class="note">Filled in from <b>${this._repo}</b>${a.cost != null ? ` (AI ${usd(a.cost)})` : ''}. Check it before you send.
+                    ${this._before != null ? html`<button class="sm quiet" @click=${() => { this._text = this._before; this._before = null; }}>Undo</button>` : ''}</p>
+                ${found.length ? html`<ul class="found">${found.map(f => html`<li><b>${f.question}</b> ${f.answer}
+                    ${f.source ? html`<span class="src">(${f.source})</span>` : ''}</li>`)}</ul>` : ''}
+                ${a.output?.note ? html`<p class="line">${a.output.note}</p>` : ''}
+            </div>` : ''}
+            ${a?.status === 'failed' ? html`<p class="error" role="alert">The agent couldn't find out: ${a.error}</p>` : ''}
+            ${open && !this._busy && !this._draft?.repo && !this._draft?.repoMentioned && !this._askRepo && !this._repo
+                ? html`<div class="acts"><button class="sm quiet" @click=${() => { this._askRepo = true; }}
+                    title="An agent can look up the [brackets] in a repo's code and docs">Look it up in a repo…</button></div>`
+            : open && !this._busy ? html`<div class="find">
+                <p class="note">The [brackets] are things to look up. An agent can find them out in a repo's code and docs,
+                    in the runner's sandbox, after a safety check of the conversation.</p>
+                ${this._draft?.repoMentioned && !this._repo ? html`<p class="line">The conversation points at
+                    <b>${this._draft.repoMentioned}</b>, which isn't one of your repos. Type it in if you want it looked at.</p>` : ''}
+                <div class="acts">
+                    <input aria-label="Repo to look in" placeholder="owner/repo" .value=${this._repo ?? ''}
+                        @input=${e => { this._repo = e.target.value; }}>
+                    <button class="sm" ?disabled=${busy || !REPO.test((this._repo ?? '').trim())}
+                        title="Starts an agent that reads the repo and fills in the [brackets]; nothing is sent"
+                        @click=${() => this._findOut()}>Find out</button>
+                </div>
+            </div>` : ''}`;
+    }
+
     _close() {
         this.dispatchEvent(new CustomEvent('reply-closed', { bubbles: true, composed: true }));
     }
@@ -94,6 +191,7 @@ class ElfReply extends LitElement {
                 : html`<textarea aria-label="Your reply" .value=${this._text ?? ''} ?disabled=${busy}
                     @input=${e => { this._text = e.target.value; }}></textarea>`}
             ${this._error ? html`<p class="error" role="alert">${this._error}</p>` : ''}
+            ${this._findPart(busy)}
             <div class="acts">
                 <button class="sm primary" ?disabled=${busy || !this._text?.trim() || !d}
                     @click=${() => this._send()}>${this._busy === 'send' ? spinner : ''}Send</button>

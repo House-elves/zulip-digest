@@ -1,7 +1,7 @@
 # A House Elves elf: what Elf Desk needs to install, set up and run zulip-digest.
 name: zulip-digest
 title: Zulip
-version: 1.3.3
+version: 1.4.0
 author: "@phillip-kruger"
 description: Sums up what was said in your Zulip streams and DMs lately, per topic, with Claude, for its Zulip tab.
 main: ZulipDigest.java
@@ -11,6 +11,8 @@ tools: [claude]
 reads:
   - Your Zulip streams and direct messages of the last day, with your API key.
   - A conversation's latest messages when you ask it to suggest a reply (Claude reads them, with no tools).
+  - When you click Find out, an agent (the runner's, in its sandbox, after a safety check, able only to read) reads the conversation and the repo you name, to fill in what the reply leaves open.
+  - The repos you maintain, from the GitHub elf's settings if it's installed, so a suggested reply can say where to look.
 writes:
   - Marks a topic read in Zulip when you click Done.
   - Sends your reply to a topic or a direct message, as you, only when you click and confirm it in the desk's bar.
@@ -58,6 +60,8 @@ refresh:
   command: digest
   schedule: "Mon..Fri *-*-* 07:00"
 data: [runs, done, style]
+# Find out starts an agent; its report is in ~/.config/zulip-digest/agents, which the tab reads.
+agents: true
 
 actions:
   done:
@@ -91,6 +95,18 @@ actions:
       # For the confirm bar's words; the elf sends where Zulip says the conversation is.
       where: {pattern: "\\P{Cntrl}{1,300}"}
       content: {pattern: "[\\s\\S]{1,10000}", max: 10000}
+  find-out:
+    label: Have an agent look up what a suggested reply leaves open
+    args: [--action=find-out]
+    ask: false
+    params:
+      server: {pattern: "[A-Za-z0-9][A-Za-z0-9.-]{0,252}"}
+      stream: {pattern: "\\P{Cntrl}{1,200}"}
+      topic: {pattern: "\\P{Cntrl}{0,200}"}
+      message: {kind: int, optional: true}
+      # The reply as you have it now, with its [placeholders], and the repo to look in (owner/name).
+      content: {pattern: "[\\s\\S]{1,10000}", max: 10000}
+      repo: {pattern: "[A-Za-z0-9][A-Za-z0-9-]{0,38}/[A-Za-z0-9._-]{1,100}"}
   learn-style:
     label: Learn how you write from your own messages
     args: [--action=learn-style]
