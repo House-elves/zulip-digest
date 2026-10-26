@@ -3,6 +3,12 @@
 What changed for you in each version of the Zulip elf, newest first. The desk shows the parts that are new when it offers you an
 update.
 
+## 1.5.0
+
+- Find out in my repos: no need to type a repo first. Claude picks the one of your repos likeliest to answer the
+  [brackets], and the agent looks there. Your repos are the GitHub elf's Repos I maintain.
+- The repo box suggests your repos as you type.
+
 ## 1.4.0
 
 - Find out: when a suggested reply leaves something open, an agent looks it up for you. Needs runner 0.5.7 or newer.

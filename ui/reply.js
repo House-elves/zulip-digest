@@ -15,10 +15,10 @@ const REPO = /^[A-Za-z0-9][A-Za-z0-9-]{0,38}\/[A-Za-z0-9._-]{1,100}$/;
  * <elf-reply .suggest=${() => elf.act('draft-reply', …)} .send=${(draft, text, options) => elf.act('send-reply', …)}
  *     .findOut=${(text, repo) => elf.act('find-out', …)}>
  *
- * suggest() answers {reply, where, cc, repo, repoMentioned, cost}; send() sends the text you wrote (cc shows when the "all" option is ticked). {@code options}: checkboxes for the
+ * suggest() answers {reply, where, cc, repo, repoMentioned, mine, cost} (mine: your repos); send() sends the text you wrote (cc shows when the "all" option is ticked). {@code options}: checkboxes for the
  * send ([{key, label, checked, hint}]), as Mail's Reply all; their values reach send(). findOut() starts an agent
- * that looks up the reply's [placeholders] in a repo, answering {agent: {id}}; its report (agents/<id>.json) has the
- * reply filled in, and what it found.
+ * that looks up the reply's [placeholders] in a repo (or, for "mine", the one of yours Claude picks), answering
+ * {agent: {id}, repo}; its report (agents/<id>.json) has the reply filled in, and what it found.
  */
 class ElfReply extends LitElement {
 
@@ -28,6 +28,7 @@ class ElfReply extends LitElement {
         options: { attribute: false },
         findOut: { attribute: false },
         _repo: { state: true },      // where Find out looks
+        _looking: { state: true },   // where Find out is looking: the repo, or "mine" while Claude picks one
         _agent: { state: true },     // its report: {id, status, lines, output, error, cost}
         _before: { state: true },    // the text before Find out filled it in, for Undo
         _askRepo: { state: true },   // Find out opened without a repo the suggestion named
@@ -72,11 +73,14 @@ class ElfReply extends LitElement {
         this._unwatch?.();
     }
 
-    async _findOut() {
+    /** Find out in the repo typed in, or with "mine" in whichever of your repos Claude picks. */
+    async _findOut(where = this._repo.trim()) {
         this._error = null;
+        this._looking = where;
         this._agent = { status: 'queued', lines: [] };
         try {
-            const r = await this.findOut(this._text, this._repo.trim());
+            const r = await this.findOut(this._text, where);
+            this._looking = r.repo ?? where;
             this._agent = { id: r.agent.id, status: r.agent.status, lines: [] };
             this._readAgent();
         } catch (e) {
@@ -139,16 +143,21 @@ class ElfReply extends LitElement {
         if (a && ['queued', 'running'].includes(a.status)) {
             const line = a.lines?.length ? a.lines[a.lines.length - 1] : 'Starting…';
             return html`<div class="find" role="status">
-                <p class="note">${spinner} Finding out in <b>${this._repo}</b>. This takes a few minutes.</p>
+                <p class="note">${spinner} ${this._looking === 'mine' ? 'Picking which of your repos to look in…'
+                    : html`Finding out in <b>${this._looking}</b>. This takes a few minutes.`}</p>
                 <p class="line">${line}</p>
                 <div class="acts"><button class="sm quiet" @click=${() => elf.cancelAgent(a.id).catch(() => {})}>Stop</button></div>
             </div>`;
         }
         const found = a?.status === 'done' ? a.output?.findings ?? [] : [];
         const open = PLACEHOLDER.test(this._text ?? '');
+        const mine = this._draft?.mine ?? [];
+        const inMine = mine.length ? html`<button class="sm" ?disabled=${busy}
+            title="Claude picks the one of your repos likeliest to answer the [brackets], and an agent looks there; nothing is sent"
+            @click=${() => this._findOut('mine')}>Find out in my repos</button>` : '';
         return html`
             ${a?.status === 'done' ? html`<div class="find">
-                <p class="note">Filled in from <b>${this._repo}</b>${a.cost != null ? ` (AI ${usd(a.cost)})` : ''}. Check it before you send.
+                <p class="note">Filled in from <b>${this._looking}</b>${a.cost != null ? ` (AI ${usd(a.cost)})` : ''}. Check it before you send.
                     ${this._before != null ? html`<button class="sm quiet" @click=${() => { this._text = this._before; this._before = null; }}>Undo</button>` : ''}</p>
                 ${found.length ? html`<ul class="found">${found.map(f => html`<li><b>${f.question}</b> ${f.answer}
                     ${f.source ? html`<span class="src">(${f.source})</span>` : ''}</li>`)}</ul>` : ''}
@@ -156,7 +165,7 @@ class ElfReply extends LitElement {
             </div>` : ''}
             ${a?.status === 'failed' ? html`<p class="error" role="alert">The agent couldn't find out: ${a.error}</p>` : ''}
             ${open && !this._busy && !this._draft?.repo && !this._draft?.repoMentioned && !this._askRepo && !this._repo
-                ? html`<div class="acts"><button class="sm quiet" @click=${() => { this._askRepo = true; }}
+                ? html`<div class="acts">${inMine}<button class="sm quiet" @click=${() => { this._askRepo = true; }}
                     title="An agent can look up the [brackets] in a repo's code and docs">Look it up in a repo…</button></div>`
             : open && !this._busy ? html`<div class="find">
                 <p class="note">The [brackets] are things to look up. An agent can find them out in a repo's code and docs,
@@ -164,11 +173,13 @@ class ElfReply extends LitElement {
                 ${this._draft?.repoMentioned && !this._repo ? html`<p class="line">The conversation points at
                     <b>${this._draft.repoMentioned}</b>, which isn't one of your repos. Type it in if you want it looked at.</p>` : ''}
                 <div class="acts">
-                    <input aria-label="Repo to look in" placeholder="owner/repo" .value=${this._repo ?? ''}
+                    <input aria-label="Repo to look in" placeholder="owner/repo" list="mine" .value=${this._repo ?? ''}
                         @input=${e => { this._repo = e.target.value; }}>
+                    <datalist id="mine">${mine.map(m => html`<option value=${m}></option>`)}</datalist>
                     <button class="sm" ?disabled=${busy || !REPO.test((this._repo ?? '').trim())}
                         title="Starts an agent that reads the repo and fills in the [brackets]; nothing is sent"
                         @click=${() => this._findOut()}>Find out</button>
+                    ${this._repo?.trim() ? '' : inMine}
                 </div>
             </div>` : ''}`;
     }

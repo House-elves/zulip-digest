@@ -114,6 +114,8 @@ public class Reply {
             r.remove("repo");
             r.put("repoMentioned", repo);
         }
+        // Your repos, for Find out to offer: one you pick, or whichever Claude thinks likeliest.
+        Research.yourRepos().forEach(r.putArray("mine")::add);
         return r;
     }
 

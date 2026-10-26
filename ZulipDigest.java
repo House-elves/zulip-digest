@@ -38,7 +38,7 @@ import java.util.stream.Stream;
  * Reads what was said in your Zulip streams and DMs lately, and sums it up per topic with Claude, for its Zulip tab on
  * Elf Desk. Marks nothing read unless you click Done on a topic there. Sends nothing.
  */
-@Command(name = "zulip-digest", mixinStandardHelpOptions = true, version = "1.0.0",
+@Command(name = "zulip-digest", mixinStandardHelpOptions = true, version = "1.5.0",
         description = "Sums up your Zulip streams per topic with Claude, for Elf Desk's Zulip tab")
 public class ZulipDigest implements Callable<Integer> {
 
@@ -170,7 +170,8 @@ public class ZulipDigest implements Callable<Integer> {
             }
             ObjectNode out = switch (action) {
                 case "draft-reply" -> Reply.draft(c);
-                // An agent, which the runner starts: it looks up what the reply leaves open, in the repo you name.
+                // An agent, which the runner starts: it looks up what the reply leaves open, in the repo you name (or, for
+                // "mine", the one of yours Claude picks).
                 case "find-out" -> Research.request(server.email(), "a Zulip conversation", Reply.json(c),
                         in.path("content").asText(""), in.path("repo").asText(""));
                 default -> Reply.send(c, in.path("content").asText(""));

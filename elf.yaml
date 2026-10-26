@@ -1,7 +1,7 @@
 # A House Elves elf: what Elf Desk needs to install, set up and run zulip-digest.
 name: zulip-digest
 title: Zulip
-version: 1.4.0
+version: 1.5.0
 author: "@phillip-kruger"
 description: Sums up what was said in your Zulip streams and DMs lately, per topic, with Claude, for its Zulip tab.
 main: ZulipDigest.java
@@ -104,9 +104,10 @@ actions:
       stream: {pattern: "\\P{Cntrl}{1,200}"}
       topic: {pattern: "\\P{Cntrl}{0,200}"}
       message: {kind: int, optional: true}
-      # The reply as you have it now, with its [placeholders], and the repo to look in (owner/name).
+      # The reply as you have it now, with its [placeholders], and the repo to look in: owner/name, or mine for
+      # whichever of your repos (the GitHub elf's Repos I maintain) Claude thinks likeliest to answer them.
       content: {pattern: "[\\s\\S]{1,10000}", max: 10000}
-      repo: {pattern: "[A-Za-z0-9][A-Za-z0-9-]{0,38}/[A-Za-z0-9._-]{1,100}"}
+      repo: {pattern: "mine|[A-Za-z0-9][A-Za-z0-9-]{0,38}/[A-Za-z0-9._-]{1,100}"}
   learn-style:
     label: Learn how you write from your own messages
     args: [--action=learn-style]
