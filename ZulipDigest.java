@@ -38,7 +38,7 @@ import java.util.stream.Stream;
  * Reads what was said in your Zulip streams and DMs lately, and sums it up per topic with Claude, for its Zulip tab on
  * Elf Desk. Marks nothing read unless you click Done on a topic there. Sends nothing.
  */
-@Command(name = "zulip-digest", mixinStandardHelpOptions = true, version = "1.5.0",
+@Command(name = "zulip-digest", mixinStandardHelpOptions = true, version = "1.6.0",
         description = "Sums up your Zulip streams per topic with Claude, for Elf Desk's Zulip tab")
 public class ZulipDigest implements Callable<Integer> {
 

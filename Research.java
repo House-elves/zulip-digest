@@ -111,11 +111,11 @@ public class Research {
         });
         if (!p.waitFor(2, java.util.concurrent.TimeUnit.MINUTES)) {
             p.destroyForcibly();
-            throw new IllegalStateException("Claude took too long to pick one of your repos");
+            throw new IllegalStateException("The coding agent took too long to pick one of your repos");
         }
         String picked = JSON.readTree(out.get(10, java.util.concurrent.TimeUnit.SECONDS)).path("structured_output").path("repo").asText("");
         return repos.stream().filter(picked::equalsIgnoreCase).findFirst()
-                .orElseThrow(() -> new IllegalStateException("Claude didn't pick one of your repos: type one instead"));
+                .orElseThrow(() -> new IllegalStateException("The coding agent didn't pick one of your repos: type one instead"));
     }
 
     /** {note, reply, findings}: note first, for anything said to the user, so the reply is only the message. */

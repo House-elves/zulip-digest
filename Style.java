@@ -73,12 +73,12 @@ public class Style {
         reader.start();
         if (!p.waitFor(3, TimeUnit.MINUTES)) {
             p.destroyForcibly();
-            throw new IllegalStateException("Claude took too long");
+            throw new IllegalStateException("The coding agent took too long");
         }
         JsonNode answer = JSON.readTree(out.get(10, TimeUnit.SECONDS));
         String style = answer.path("structured_output").path("style").asText("").strip();
         if (p.exitValue() != 0 || style.isBlank()) {
-            throw new IllegalStateException("Claude didn't describe it: " + answer.path("result").asText("no answer"));
+            throw new IllegalStateException("The coding agent didn't describe it: " + answer.path("result").asText("no answer"));
         }
         ObjectNode n = save(style, samples.size() + " of your " + what);
         if (answer.path("total_cost_usd").isNumber()) n.put("cost", answer.path("total_cost_usd").asDouble());

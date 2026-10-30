@@ -168,15 +168,33 @@ public class Reply {
         /**
          * Claude for reading other people's words: no tools at all (built in or MCP), none of your settings (hooks,
          * plugins, permissions), in an empty folder of its own. Answers JSON: the text in "result" (or
-         * "structured_output"), and total_cost_usd. Sonnet.
+         * "structured_output"), and total_cost_usd. Sonnet. Run by the runner, the coding agent the elf's settings
+         * chose instead (ELF_ASK), in the same shape.
          */
         static Process start(String... extra) throws IOException {
             List<String> cmd = new ArrayList<>(List.of("claude", "-p", "--model", "sonnet", "--output-format", "json",
                     "--tools", "", "--strict-mcp-config", "--setting-sources", ""));
             cmd.addAll(List.of(extra));
+            // Run by the House Elves runner: the coding agent its settings chose, locked down the same way, answering
+            // in this same shape (ELF_ASK, runner 0.43.0 or later).
+            String ask = System.getenv("ELF_ASK");
+            if (ask != null && !ask.isBlank()) cmd = ask(ask, extra);
             java.nio.file.Path dir = java.nio.file.Files.createTempDirectory("elf-claude-");
             dir.toFile().deleteOnExit();
             return new ProcessBuilder(cmd).directory(dir.toFile()).start();
+        }
+
+        /** ELF_ASK with Claude's options as its own: --json-schema is --schema, --append-system-prompt is --system. */
+        static List<String> ask(String ask, String... extra) {
+            List<String> cmd = new ArrayList<>(List.of(ask));
+            for (String x : extra) {
+                cmd.add(switch (x) {
+                    case "--json-schema" -> "--schema";
+                    case "--append-system-prompt" -> "--system";
+                    default -> x;
+                });
+            }
+            return cmd;
         }
 
         static ObjectNode reply(String prompt) throws Exception {
@@ -202,12 +220,12 @@ public class Reply {
             reader.start();
             if (!p.waitFor(3, TimeUnit.MINUTES)) {
                 p.destroyForcibly();
-                throw new IllegalStateException("Claude took too long to suggest a reply");
+                throw new IllegalStateException("The coding agent took too long to suggest a reply");
             }
             JsonNode answer = JSON.readTree(out.get(10, TimeUnit.SECONDS));
             String reply = answer.path("structured_output").path("reply").asText("");
             if (p.exitValue() != 0 || reply.isBlank()) {
-                throw new IllegalStateException("Claude didn't suggest a reply: " + answer.path("result").asText("no answer"));
+                throw new IllegalStateException("The coding agent didn't suggest a reply: " + answer.path("result").asText("no answer"));
             }
             ObjectNode r = JSON.createObjectNode().put("reply", reply.strip());
             String repo = answer.path("structured_output").path("repo").asText("").strip();

@@ -14,6 +14,8 @@ Suggestions follow **How you write**, a short note at the top of Zulip's Setting
 
 Claude reads other people's words here, so every Claude call (digests and replies) runs with no tools (built in or MCP), none of your Claude settings, and in an empty folder.
 
+**Coding agent**: it asks Claude Code by default. Under **Coding agent** in its settings you can choose Codex or [pi](https://pi.dev/) instead, or leave it to the runner's choice (runner 0.43.0 or later). Whichever it is, it gets no tools, none of your settings and an empty folder, so it can only answer with text. Find out still uses Claude Code.
+
 ## Install
 
 In Elf Desk, the **+** after the last tab: **Add** it, which adds the Zulip tab, which asks for your Zulip server, the email you sign in with and your API key (Zulip, Personal settings, Account and privacy). Once they're saved it reads Zulip for the first time. After that it runs when you click **Refresh** (or the dashboard's **Refresh everything**) and on weekdays at 07:00, which you can change in its settings.

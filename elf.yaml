@@ -1,16 +1,18 @@
 # A House Elves elf: what Elf Desk needs to install, set up and run zulip-digest.
 name: zulip-digest
 title: Zulip
-version: 1.5.0
+version: 1.6.0
 author: "@phillip-kruger"
-description: Sums up what was said in your Zulip streams and DMs lately, per topic, with Claude, for its Zulip tab.
+description: Sums up what was said in your Zulip streams and DMs lately, per topic, with a coding agent (Claude Code, or another you choose), for its Zulip tab.
 main: ZulipDigest.java
 config: ~/.config/zulip-digest/config
-tools: [claude]
+tools: []
+# What it asks a coding agent (prompt in, text out, no tools): Claude Code unless you choose another in its settings.
+ai: [ask]
 
 reads:
   - Your Zulip streams and direct messages of the last day, with your API key.
-  - A conversation's latest messages when you ask it to suggest a reply (Claude reads them, with no tools).
+  - A conversation's latest messages when you ask it to suggest a reply (the coding agent reads them, with no tools).
   - When you click Find out, an agent (the runner's, in its sandbox, after a safety check, able only to read) reads the conversation and the repo you name, to fill in what the reply leaves open.
   - The repos you maintain, from the GitHub elf's settings if it's installed, so a suggested reply can say where to look.
 writes:
@@ -105,7 +107,7 @@ actions:
       topic: {pattern: "\\P{Cntrl}{0,200}"}
       message: {kind: int, optional: true}
       # The reply as you have it now, with its [placeholders], and the repo to look in: owner/name, or mine for
-      # whichever of your repos (the GitHub elf's Repos I maintain) Claude thinks likeliest to answer them.
+      # whichever of your repos (the GitHub elf's Repos I maintain) the coding agent thinks likeliest to answer them.
       content: {pattern: "[\\s\\S]{1,10000}", max: 10000}
       repo: {pattern: "mine|[A-Za-z0-9][A-Za-z0-9-]{0,38}/[A-Za-z0-9._-]{1,100}"}
   learn-style:
