@@ -3,6 +3,11 @@
 What changed for you in each version of the Zulip elf, newest first. The desk shows the parts that are new when it offers you an
 update.
 
+## 1.7.0
+
+- New: voice input. 🎤 next to your reply: say it, and the words go in at the cursor, for you to read before you send. The desk listens, with your browser's speech recognition or Whisper on its
+  machine. Needs Elf Desk 0.6.42.
+
 ## 1.6.0
 
 - Digests and suggested replies ask the coding agent you choose: Claude Code, Codex or pi, under **Coding agent** in its settings (the runner's choice unless you pick one). Each is asked with no tools. It needs runner 0.43.0; with an older runner it asks Claude Code as before. Find out still uses Claude Code.

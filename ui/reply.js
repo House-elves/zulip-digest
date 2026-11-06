@@ -200,7 +200,7 @@ class ElfReply extends LitElement {
             ${this._busy === 'suggest' && this._text == null
                 ? html`<p class="note">${spinner} Reading the conversation and suggesting a reply. This takes a little while.</p>`
                 : html`<textarea aria-label="Your reply" .value=${this._text ?? ''} ?disabled=${busy}
-                    @input=${e => { this._text = e.target.value; }}></textarea>`}
+                    @input=${e => { this._text = e.target.value; }}></textarea><elf-mic></elf-mic>`}
             ${this._error ? html`<p class="error" role="alert">${this._error}</p>` : ''}
             ${this._findPart(busy)}
             <div class="acts">
