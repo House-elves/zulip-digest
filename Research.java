@@ -106,14 +106,21 @@ public class Research {
 
     /**
      * {"agent": ..., "repo": where it looks}: the runner starts it, and answers with its {id, status} in its place.
-     * With repo "mine", Claude picks the repo first, from yours only.
+     * With repo "mine", Claude picks the repo first, from yours only; one of your organizations' it answers as
+     * {"confirm": repo} instead, for you to start Find out there.
      */
     static ObjectNode request(String you, String what, String conversation, String draft, String repo) throws Exception {
         String text = draft == null ? "" : draft.strip();
         if (text.isEmpty()) throw new IllegalArgumentException("There's no reply to fill in");
         String untrusted = "<conversation>\n" + conversation + "\n</conversation>\n\n<reply>\n" + text.replace("</", "<\\/")
                 + "\n</reply>";
-        if (MINE.equals(repo)) repo = pick(untrusted);
+        if (MINE.equals(repo)) {
+            repo = pick(untrusted);
+            // A repo of one of your organizations, not one you maintain: anyone there may own it, so it waits for your
+            // click, in the box, rather than the agent starting there unseen.
+            String picked = repo;
+            if (yourRepos().stream().noneMatch(picked::equalsIgnoreCase)) return JSON.createObjectNode().put("confirm", repo);
+        }
         if (!REPO.matcher(repo).matches()) throw new IllegalArgumentException("Where to look is a GitHub repo, owner/name");
         String prompt = "You help " + you + " answer " + what + ". Below are the conversation and the reply they mean "
                 + "to send, which leaves what they need to find out in [square brackets]. You're in a clone of " + repo

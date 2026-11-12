@@ -3,6 +3,11 @@
 What changed for you in each version of the Zulip elf, newest first. The desk shows the parts that are new when it offers you an
 update.
 
+## 1.8.1
+
+- When Find out in my repos picks one of your organizations' repos, rather than one you maintain, it puts it in the box
+  and waits for your Find out click: anyone in the organization may own that repo.
+
 ## 1.8.0
 
 - Find out can look in your organizations' repos too, not only the ones you maintain. A chat in the smallrye stream about

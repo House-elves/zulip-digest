@@ -32,6 +32,7 @@ class ElfReply extends LitElement {
         _agent: { state: true },     // its report: {id, status, lines, output, error, cost}
         _before: { state: true },    // the text before Find out filled it in, for Undo
         _askRepo: { state: true },   // Find out opened without a repo the suggestion named
+        _picked_: { state: true },   // the organization repo "mine" suggested, waiting for your Find out
         _draft: { state: true },     // what suggest() answered
         _text: { state: true },
         _picked: { state: true },    // option key -> checked
@@ -80,6 +81,15 @@ class ElfReply extends LitElement {
         this._agent = { status: 'queued', lines: [] };
         try {
             const r = await this.findOut(this._text, where);
+            if (r.confirm) {
+                // Not one you maintain: it's in the box, and Find out waits for your click.
+                this._repo = r.confirm;
+                this._picked_ = r.confirm;
+                this._agent = null;
+                this._looking = null;
+                return;
+            }
+            this._picked_ = null;
             this._looking = r.repo ?? where;
             this._agent = { id: r.agent.id, status: r.agent.status, lines: [] };
             this._readAgent();
@@ -170,6 +180,8 @@ class ElfReply extends LitElement {
             : open && !this._busy ? html`<div class="find">
                 <p class="note">The [brackets] are things to look up. An agent can find them out in a repo's code and docs,
                     in the runner's sandbox, after a safety check of the conversation.</p>
+                ${this._picked_ && this._picked_ === this._repo ? html`<p class="line">Claude suggests <b>${this._picked_}</b>,
+                    one of your organizations' repos rather than one you maintain. Click Find out to look there.</p>` : ''}
                 ${this._draft?.repoMentioned && !this._repo ? html`<p class="line">The conversation points at
                     <b>${this._draft.repoMentioned}</b>, which isn't one of your repos or organizations'.
                     <button class="sm quiet" @click=${() => { this._repo = this._draft.repoMentioned; }}
