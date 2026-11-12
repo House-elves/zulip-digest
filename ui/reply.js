@@ -152,8 +152,8 @@ class ElfReply extends LitElement {
         const found = a?.status === 'done' ? a.output?.findings ?? [] : [];
         const open = PLACEHOLDER.test(this._text ?? '');
         const mine = this._draft?.mine ?? [];
-        const inMine = mine.length ? html`<button class="sm" ?disabled=${busy}
-            title="Claude picks the one of your repos likeliest to answer the [brackets], and an agent looks there; nothing is sent"
+        const inMine = mine.length || this._draft?.orgs?.length ? html`<button class="sm" ?disabled=${busy}
+            title="Claude picks the repo likeliest to answer the [brackets], one you maintain or one of your organizations' (the GitHub elf's scope), and an agent looks there; nothing is sent"
             @click=${() => this._findOut('mine')}>Find out in my repos</button>` : '';
         return html`
             ${a?.status === 'done' ? html`<div class="find">
@@ -171,7 +171,9 @@ class ElfReply extends LitElement {
                 <p class="note">The [brackets] are things to look up. An agent can find them out in a repo's code and docs,
                     in the runner's sandbox, after a safety check of the conversation.</p>
                 ${this._draft?.repoMentioned && !this._repo ? html`<p class="line">The conversation points at
-                    <b>${this._draft.repoMentioned}</b>, which isn't one of your repos. Type it in if you want it looked at.</p>` : ''}
+                    <b>${this._draft.repoMentioned}</b>, which isn't one of your repos or organizations'.
+                    <button class="sm quiet" @click=${() => { this._repo = this._draft.repoMentioned; }}
+                        title="Puts it in the box; Find out still waits for your click">Use it</button></p>` : ''}
                 <div class="acts">
                     <input aria-label="Repo to look in" placeholder="owner/repo" list="mine" .value=${this._repo ?? ''}
                         @input=${e => { this._repo = e.target.value; }}>

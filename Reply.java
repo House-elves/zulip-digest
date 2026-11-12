@@ -107,15 +107,18 @@ public class Reply {
                 + "something they'd need to look up, leave a [placeholder] for it rather than inventing an answer."
                 + Research.forPrompt() + "\n\n<conversation>\n" + data + "\n</conversation>" + Style.forPrompt();
         ObjectNode r = Claude.reply(prompt).put("where", c.where());
-        // Where Find out looks is yours to say: one of your repos, or one you type. A repo the conversation points
-        // at is only shown, since anyone in it could point the agent at a repo of theirs.
+        // Where Find out looks is yours to say: one of your repos (or of an owner you work in), or one you type. Any
+        // other repo the conversation points at is only shown, since anyone in it could point the agent at theirs.
         String repo = r.path("repo").asText("");
-        if (!repo.isEmpty() && Research.yourRepos().stream().noneMatch(repo::equalsIgnoreCase)) {
+        if (!repo.isEmpty() && !Research.yours(repo)) {
             r.remove("repo");
             r.put("repoMentioned", repo);
+        } else if (!repo.isEmpty() && !Research.exists(repo)) {
+            r.remove("repo");
         }
         // Your repos, for Find out to offer: one you pick, or whichever Claude thinks likeliest.
         Research.yourRepos().forEach(r.putArray("mine")::add);
+        Research.yourOrgs().forEach(r.putArray("orgs")::add);
         return r;
     }
 

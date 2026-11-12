@@ -3,6 +3,13 @@
 What changed for you in each version of the Zulip elf, newest first. The desk shows the parts that are new when it offers you an
 update.
 
+## 1.8.0
+
+- Find out can look in your organizations' repos too, not only the ones you maintain. A chat in the smallrye stream about
+  the website can be looked up in smallrye's website repo. Your organizations are the owners in the GitHub elf's scope.
+- A suggested reply names the repo the conversation is about, and no longer falls back on one of yours just because it's listed.
+- A repo the conversation points at, outside your organizations, has a **Use it** button instead of you typing it.
+
 ## 1.7.0
 
 - New: voice input. 🎤 next to your reply: say it, and the words go in at the cursor, for you to read before you send. The desk listens, with your browser's speech recognition or Whisper on its
