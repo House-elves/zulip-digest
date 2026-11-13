@@ -220,7 +220,8 @@ class ZulipTab extends LitElement {
                 ${t.digest ? html`<p class="digest">${t.digest}</p>` : ''}
                 ${this._replying === t.key ? html`<elf-reply .suggest=${() => elf.act('draft-reply', replyValues(t))}
                     .send=${(d, text) => elf.act('send-reply', { ...replyValues(t), where: d.where, content: text })}
-                    .findOut=${(text, repo) => elf.act('find-out', { ...replyValues(t), content: text, repo })}
+                    .findOut=${(text, repo, pr) => elf.act('find-out', { ...replyValues(t), content: text, repo, ...(pr ? { pr } : {}) })}
+                    .repoPrs=${repo => elf.act('repo-prs', { repo })}
                     @reply-closed=${() => { this._replying = null; }}></elf-reply>` : ''}
                 <details>
                     <summary>${t.digest ? 'Read the messages' : 'Messages'}</summary>

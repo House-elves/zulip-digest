@@ -27,12 +27,15 @@ class ElfReply extends LitElement {
         send: { attribute: false },
         options: { attribute: false },
         findOut: { attribute: false },
+        repoPrs: { attribute: false }, // repo -> {prs: [{number, title, url}]}: your open PRs there
         _repo: { state: true },      // where Find out looks
         _looking: { state: true },   // where Find out is looking: the repo, or "mine" while Claude picks one
         _agent: { state: true },     // its report: {id, status, lines, output, error, cost}
         _before: { state: true },    // the text before Find out filled it in, for Undo
         _askRepo: { state: true },   // Find out opened without a repo the suggestion named
-        _picked_: { state: true },   // the organization repo "mine" suggested, waiting for your Find out
+        _picked_: { state: true },
+        _prs: { state: true },       // {repo, prs}: your open PRs in the repo in the box
+        _pr: { state: true },        // the one Find out looks in, 0 for the default branch   // the organization repo "mine" suggested, waiting for your Find out
         _draft: { state: true },     // what suggest() answered
         _text: { state: true },
         _picked: { state: true },    // option key -> checked
@@ -69,6 +72,28 @@ class ElfReply extends LitElement {
         this._unwatch = elf.onChange(what => { if (what === 'agents' && this._agent) this._readAgent(); });
     }
 
+    updated(changed) {
+        if (changed.has('_repo')) this._loadPrs();
+    }
+
+    /** Your open PRs in the repo in the box, a moment after it's typed; the newest is picked when there's only one. */
+    _loadPrs() {
+        clearTimeout(this._prTimer);
+        const repo = (this._repo ?? '').trim();
+        if (!this.repoPrs || !REPO.test(repo)) {
+            this._prs = null;
+            this._pr = 0;
+            return;
+        }
+        if (this._prs?.repo?.toLowerCase() === repo.toLowerCase()) return;
+        this._prTimer = setTimeout(async () => {
+            const r = await this.repoPrs(repo).catch(() => null);
+            if ((this._repo ?? '').trim() !== repo) return;
+            this._prs = { repo, prs: r?.prs ?? [] };
+            this._pr = this._prs.prs.length === 1 ? this._prs.prs[0].number : 0;
+        }, 400);
+    }
+
     disconnectedCallback() {
         super.disconnectedCallback();
         this._unwatch?.();
@@ -80,7 +105,8 @@ class ElfReply extends LitElement {
         this._looking = where;
         this._agent = { status: 'queued', lines: [] };
         try {
-            const r = await this.findOut(this._text, where);
+            const pr = where === 'mine' ? 0 : this._pr || 0;
+            const r = await this.findOut(this._text, where, pr);
             if (r.confirm) {
                 // Not one you maintain: it's in the box, and Find out waits for your click.
                 this._repo = r.confirm;
@@ -90,7 +116,7 @@ class ElfReply extends LitElement {
                 return;
             }
             this._picked_ = null;
-            this._looking = r.repo ?? where;
+            this._looking = (r.repo ?? where) + (r.pr ? ` #${r.pr}` : '');
             this._agent = { id: r.agent.id, status: r.agent.status, lines: [] };
             this._readAgent();
         } catch (e) {
@@ -190,6 +216,12 @@ class ElfReply extends LitElement {
                     <input aria-label="Repo to look in" placeholder="owner/repo" list="mine" .value=${this._repo ?? ''}
                         @input=${e => { this._repo = e.target.value; }}>
                     <datalist id="mine">${mine.map(m => html`<option value=${m}></option>`)}</datalist>
+                    ${this._prs?.prs?.length ? html`<select aria-label="Where in the repo" .value=${String(this._pr ?? 0)}
+                        title="What the conversation asks about may only be in your PR's branch"
+                        @change=${e => { this._pr = Number(e.target.value); }}>
+                        <option value="0" ?selected=${!this._pr}>its default branch</option>
+                        ${this._prs.prs.map(p => html`<option value=${String(p.number)} ?selected=${this._pr === p.number}>your PR #${p.number}: ${p.title}</option>`)}
+                    </select>` : ''}
                     <button class="sm" ?disabled=${busy || !REPO.test((this._repo ?? '').trim())}
                         title="Starts an agent that reads the repo and fills in the [brackets]; nothing is sent"
                         @click=${() => this._findOut()}>Find out</button>

@@ -101,6 +101,16 @@ public class ZulipDigest implements Callable<Integer> {
     /** --action done: Done on a topic in the Zulip tab, its values on stdin (the runner checked them against elf.yaml). */
     private int action(Config config) {
         if (action.equals("learn-style") || action.equals("save-style")) return style(config);
+        if (action.equals("repo-prs")) {
+            // Your open PRs in a repo, for Find out to look in one.
+            try {
+                System.out.println(JSON.writeValueAsString(Research.yourPrs(JSON.readTree(System.in).path("repo").asText(""))));
+                return 0;
+            } catch (Exception e) {
+                System.err.println("Couldn't list your PRs: " + e.getMessage());
+                return 1;
+            }
+        }
         if (!List.of("done", "draft-reply", "send-reply", "find-out").contains(action)) {
             System.err.println("Not an action: " + action);
             return 2;
@@ -173,7 +183,7 @@ public class ZulipDigest implements Callable<Integer> {
                 // An agent, which the runner starts: it looks up what the reply leaves open, in the repo you name (or, for
                 // "mine", the one of yours Claude picks).
                 case "find-out" -> Research.request(server.email(), "a Zulip conversation", Reply.json(c),
-                        in.path("content").asText(""), in.path("repo").asText(""));
+                        in.path("content").asText(""), in.path("repo").asText(""), in.path("pr").asInt(0));
                 default -> Reply.send(c, in.path("content").asText(""));
             };
             System.out.println(JSON.writeValueAsString(out));
